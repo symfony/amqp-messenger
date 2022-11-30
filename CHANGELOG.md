@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+5.5.0
+-----
+
+* Introduced support for multiple bindings on the same queue.
+
 5.3
 ---
 
