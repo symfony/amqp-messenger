@@ -1,5 +1,5 @@
 {
-    "name": "symfony/amqp-messenger",
+    "name": "ecentria/amqp-messenger",
     "type": "symfony-messenger-bridge",
     "description": "Symfony AMQP extension Messenger Bridge",
     "keywords": [],
@@ -32,5 +32,8 @@
             "/Tests/"
         ]
     },
-    "minimum-stability": "dev"
+    "minimum-stability": "dev",
+    "replace": {
+        "symfony/amqp-messenger": "v5.4.15"
+    }
 }
