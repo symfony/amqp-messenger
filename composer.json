@@ -32,7 +32,7 @@
             "/Tests/"
         ]
     },
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "replace": {
         "symfony/amqp-messenger": "v5.4.15"
     }
