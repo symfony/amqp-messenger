@@ -38,7 +38,7 @@ class AmqpReceiverTest extends TestCase
         $amqpEnvelope = $this->createAMQPEnvelope();
         $connection = $this->createMock(Connection::class);
         $connection->method('getQueueNames')->willReturn(['queueName']);
-        $connection->method('get')->with('queueName')->willReturn($amqpEnvelope);
+        $connection->method('consume')->with('queueName')->willReturn([$amqpEnvelope]);
 
         $receiver = new AmqpReceiver($connection, $serializer);
         $actualEnvelopes = iterator_to_array($receiver->get());

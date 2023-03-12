@@ -250,10 +250,6 @@ class Connection
             trigger_deprecation('symfony/messenger', '5.1', 'Invalid option(s) "%s" passed to the AMQP Messenger transport. Passing invalid options is deprecated.', implode('", "', $invalidOptions));
         }
 
-        if (isset($options['prefetch_count'])) {
-            trigger_deprecation('symfony/messenger', '5.3', 'The "prefetch_count" option passed to the AMQP Messenger transport has no effect and should not be used.');
-        }
-
         if (\is_array($options['queues'] ?? false)) {
             foreach ($options['queues'] as $queue) {
                 if (!\is_array($queue)) {
@@ -454,6 +450,44 @@ class Connection
         return null;
     }
 
+    /**
+     * Consumes messages from the specified queue.
+     *
+     * @return list<\AMQPEnvelope>
+     *
+     * @throws \AMQPException
+     */
+    public function consume(string $queueName): array
+    {
+        $this->clearWhenDisconnected();
+
+        if ($this->autoSetupExchange) {
+            $this->setupExchangeAndQueues();
+        }
+
+        $result = [];
+
+        try {
+            $this->queue($queueName)->consume(function (\AMQPEnvelope $envelope) use (&$result): bool {
+                $result[] = $envelope;
+
+                if (\count($result) >= $this->connectionOptions['prefetch_count'] ?? 3) {
+                    return false;
+                }
+
+                return true;
+            });
+        } catch (\AMQPQueueException $e) {
+            if ('Consumer timeout exceed' === $e->getMessage()) {
+                return $result;
+            }
+
+            throw $e;
+        }
+
+        return $result;
+    }
+
     public function ack(\AMQPEnvelope $message, string $queueName): bool
     {
         return $this->queue($queueName)->ack($message->getDeliveryTag());
@@ -509,6 +543,7 @@ class Connection
                 throw new \AMQPException('Could not connect to the AMQP server. Please verify the provided DSN.', 0, $e);
             }
             $this->amqpChannel = $this->amqpFactory->createChannel($connection);
+            $this->amqpChannel->qos(0, $this->connectionOptions['prefetch_count'] ?? 3);
 
             if ('' !== ($this->connectionOptions['confirm_timeout'] ?? '')) {
                 $this->amqpChannel->confirmSelect();

@@ -57,30 +57,32 @@ class AmqpReceiver implements QueueReceiverInterface, MessageCountAwareInterface
     private function getEnvelope(string $queueName): iterable
     {
         try {
-            $amqpEnvelope = $this->connection->get($queueName);
+            $amqpEnvelopes = $this->connection->consume($queueName);
         } catch (\AMQPException $exception) {
             throw new TransportException($exception->getMessage(), 0, $exception);
         }
 
-        if (null === $amqpEnvelope) {
+        if ([] === $amqpEnvelopes) {
             return;
         }
 
-        $body = $amqpEnvelope->getBody();
+        foreach ($amqpEnvelopes as $amqpEnvelope) {
+            $body = $amqpEnvelope->getBody();
 
-        try {
-            $envelope = $this->serializer->decode([
-                'body' => false === $body ? '' : $body, // workaround https://github.com/pdezwart/php-amqp/issues/351
-                'headers' => $amqpEnvelope->getHeaders(),
-            ]);
-        } catch (MessageDecodingFailedException $exception) {
-            // invalid message of some type
-            $this->rejectAmqpEnvelope($amqpEnvelope, $queueName);
+            try {
+                $envelope = $this->serializer->decode([
+                    'body' => false === $body ? '' : $body, // workaround https://github.com/pdezwart/php-amqp/issues/351
+                    'headers' => $amqpEnvelope->getHeaders(),
+                ]);
+            } catch (MessageDecodingFailedException $exception) {
+                // invalid message of some type
+                $this->rejectAmqpEnvelope($amqpEnvelope, $queueName);
 
-            throw $exception;
+                throw $exception;
+            }
+
+            yield $envelope->with(new AmqpReceivedStamp($amqpEnvelope, $queueName));
         }
-
-        yield $envelope->with(new AmqpReceivedStamp($amqpEnvelope, $queueName));
     }
 
     /**
