@@ -92,10 +92,16 @@ class AmqpReceiver implements QueueReceiverInterface, MessageCountAwareInterface
         try {
             $stamp = $this->findAmqpStamp($envelope);
 
-            $this->connection->ack(
-                $stamp->getAmqpEnvelope(),
-                $stamp->getQueueName()
-            );
+            $this->connection->ack($stamp->getAmqpEnvelope(), $stamp->getQueueName());
+        } catch (\AMQPConnectionException) {
+            try {
+                $stamp = $this->findAmqpStamp($envelope);
+
+                $this->connection->queue($stamp->getQueueName())->getConnection()->reconnect();
+                $this->connection->ack($stamp->getAmqpEnvelope(), $stamp->getQueueName());
+            } catch (\AMQPException $exception) {
+                throw new TransportException($exception->getMessage(), 0, $exception);
+            }
         } catch (\AMQPException $exception) {
             throw new TransportException($exception->getMessage(), 0, $exception);
         }
@@ -124,6 +130,13 @@ class AmqpReceiver implements QueueReceiverInterface, MessageCountAwareInterface
     {
         try {
             $this->connection->nack($amqpEnvelope, $queueName, \AMQP_NOPARAM);
+        } catch (\AMQPConnectionException) {
+            try {
+                $this->connection->queue($queueName)->getConnection()->reconnect();
+                $this->connection->nack($amqpEnvelope, $queueName, \AMQP_NOPARAM);
+            } catch (\AMQPException $exception) {
+                throw new TransportException($exception->getMessage(), 0, $exception);
+            }
         } catch (\AMQPException $exception) {
             throw new TransportException($exception->getMessage(), 0, $exception);
         }
