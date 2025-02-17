@@ -15,6 +15,7 @@ use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Exception\LogicException;
 use Symfony\Component\Messenger\Exception\MessageDecodingFailedException;
 use Symfony\Component\Messenger\Exception\TransportException;
+use Symfony\Component\Messenger\Stamp\TransportMessageIdStamp;
 use Symfony\Component\Messenger\Transport\Receiver\MessageCountAwareInterface;
 use Symfony\Component\Messenger\Transport\Receiver\QueueReceiverInterface;
 use Symfony\Component\Messenger\Transport\Serialization\PhpSerializer;
@@ -82,6 +83,12 @@ class AmqpReceiver implements QueueReceiverInterface, MessageCountAwareInterface
             $this->rejectAmqpEnvelope($amqpEnvelope, $queueName);
 
             throw $exception;
+        }
+
+        if (null !== $amqpEnvelope->getMessageId()) {
+            $envelope = $envelope
+                ->withoutAll(TransportMessageIdStamp::class)
+                ->with(new TransportMessageIdStamp($amqpEnvelope->getMessageId()));
         }
 
         yield $envelope->with(new AmqpReceivedStamp($amqpEnvelope, $queueName));
