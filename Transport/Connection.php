@@ -155,6 +155,11 @@ class Connection
      *     * queue_name_pattern: Pattern to use to create the queues (Default: "delay_%exchange_name%_%routing_key%_%delay%")
      *     * exchange_name: Name of the exchange to be used for the delayed/retried messages (Default: "delays")
      *     * arguments: array of extra delay queue arguments (for example:  ['x-queue-type' => 'classic', 'x-message-deduplication' => true,])
+     *     * daily_delay_queues: When true, delay queues will be created with names including the current date
+     *       (e.g., '%queue_name_pattern%_%current_date%'). These queues are automatically deleted by RabbitMQ after they
+     *       expire (x-expires argument), the x-expires argument is set to 24 hours (24 * 60 * 60 * 1000) plus delay. This is useful for quorum queues.
+     *       because quorum queues do not redeclare expire time.
+     *       (Default: false)
      *   * auto_setup: Enable or not the auto-setup of queues and exchanges (Default: true)
      *
      *   * Connection tuning options (see http://www.rabbitmq.com/amqp-0-9-1-reference.html#connection.tune for details):
@@ -402,11 +407,14 @@ class Connection
         $queue = $this->amqpFactory->createQueue($this->channel());
         $queue->setName($this->getRoutingKeyForDelay($delay, $routingKey, $isRetryAttempt));
         $queue->setFlags(\AMQP_DURABLE);
+        $queueExpirationBase = ($this->connectionOptions['delay']['daily_delay_queues'] ?? false) ? 24 * 60 * 60 * 1000 : 0;
         $queue->setArguments(array_merge([
             'x-message-ttl' => $delay,
             // delete the delay queue 10 seconds after the message expires
             // publishing another message redeclares the queue which renews the lease
-            'x-expires' => $delay + 10000,
+            // For quorum queues, redeclaration is not allowed, so using daily_delay_queues=true is recommended to manage cleanup.
+            // It will create a new queue for each day, with x-expires set to 24 hours (24 * 60 * 60 * 1000) plus delay.
+            'x-expires' => $queueExpirationBase + $delay + 10000,
             // message should be broadcast to all consumers during delay, but to only one queue during retry
             // empty name is default direct exchange
             'x-dead-letter-exchange' => $isRetryAttempt ? '' : $this->exchangeOptions['name'],
@@ -421,12 +429,13 @@ class Connection
     private function getRoutingKeyForDelay(int $delay, ?string $finalRoutingKey, bool $isRetryAttempt): string
     {
         $action = $isRetryAttempt ? '_retry' : '_delay';
+        $date = ($this->connectionOptions['delay']['daily_delay_queues'] ?? false) ? '_'.(new \DateTimeImmutable())->format('Y-m-d') : '';
 
         return str_replace(
             ['%delay%', '%exchange_name%', '%routing_key%'],
             [$delay, $this->exchangeOptions['name'], $finalRoutingKey ?? ''],
             $this->connectionOptions['delay']['queue_name_pattern']
-        ).$action;
+        ).$action.$date;
     }
 
     /**
