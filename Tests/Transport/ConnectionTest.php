@@ -11,6 +11,9 @@
 
 namespace Symfony\Component\Messenger\Bridge\Amqp\Tests\Transport;
 
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Bridge\Amqp\Tests\Fixtures\DummyMessage;
 use Symfony\Component\Messenger\Bridge\Amqp\Transport\AmqpFactory;
@@ -18,11 +21,8 @@ use Symfony\Component\Messenger\Bridge\Amqp\Transport\AmqpStamp;
 use Symfony\Component\Messenger\Bridge\Amqp\Transport\Connection;
 use Symfony\Component\Messenger\Exception\InvalidArgumentException;
 
-/**
- * @requires extension amqp
- *
- * @group time-sensitive
- */
+#[RequiresPhpExtension('amqp')]
+#[Group('time-sensitive')]
 class ConnectionTest extends TestCase
 {
     private const DEFAULT_EXCHANGE_NAME = 'messages';
@@ -222,9 +222,7 @@ class ConnectionTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider invalidQueueArgumentsDataProvider
-     */
+    #[DataProvider('invalidQueueArgumentsDataProvider')]
     public function testFromDsnWithInvalidValueOnQueueArguments(string $dsn, array $options)
     {
         $this->expectException(InvalidArgumentException::class);
