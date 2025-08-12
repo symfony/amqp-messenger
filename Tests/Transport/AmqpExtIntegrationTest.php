@@ -239,17 +239,17 @@ class AmqpExtIntegrationTest extends TestCase
         $this->assertFalse($process->isRunning());
         $this->assertLessThan($amqpReadTimeout, microtime(true) - $signalTime);
         $this->assertSame($expectedOutput.<<<'TXT'
-Get envelope with message: Symfony\Component\Messenger\Bridge\Amqp\Tests\Fixtures\DummyMessage
-with stamps: [
-    "Symfony\\Component\\Messenger\\Stamp\\SerializedMessageStamp",
-    "Symfony\\Component\\Messenger\\Bridge\\Amqp\\Transport\\AmqpReceivedStamp",
-    "Symfony\\Component\\Messenger\\Stamp\\ReceivedStamp",
-    "Symfony\\Component\\Messenger\\Stamp\\ConsumedByWorkerStamp",
-    "Symfony\\Component\\Messenger\\Stamp\\AckStamp"
-]
-Done.
+            Get envelope with message: Symfony\Component\Messenger\Bridge\Amqp\Tests\Fixtures\DummyMessage
+            with stamps: [
+                "Symfony\\Component\\Messenger\\Stamp\\SerializedMessageStamp",
+                "Symfony\\Component\\Messenger\\Bridge\\Amqp\\Transport\\AmqpReceivedStamp",
+                "Symfony\\Component\\Messenger\\Stamp\\ReceivedStamp",
+                "Symfony\\Component\\Messenger\\Stamp\\ConsumedByWorkerStamp",
+                "Symfony\\Component\\Messenger\\Stamp\\AckStamp"
+            ]
+            Done.
 
-TXT
+            TXT
             , $process->getOutput());
     }
 
