@@ -249,8 +249,9 @@ class AmqpExtIntegrationTest extends TestCase
             ]
             Done.
 
-            TXT
-            , $process->getOutput());
+            TXT,
+            $process->getOutput()
+        );
     }
 
     public function testItCountsMessagesInQueue()
