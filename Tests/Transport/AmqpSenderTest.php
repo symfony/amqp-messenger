@@ -128,7 +128,7 @@ class AmqpSenderTest extends TestCase
         $envelope = (new Envelope(new DummyMessage('Oy')))->with($stamp);
         $encoded = ['body' => '...', 'headers' => ['type' => DummyMessage::class]];
 
-        $serializer = $this->createMock(SerializerInterface::class);
+        $serializer = $this->createStub(SerializerInterface::class);
         $serializer->method('encode')->with($envelope)->willReturn($encoded);
 
         $connection = $this->createMock(Connection::class);
@@ -149,7 +149,7 @@ class AmqpSenderTest extends TestCase
         $envelope = (new Envelope(new DummyMessage('Oy')))->with($stamp);
         $encoded = ['body' => '...', 'headers' => ['type' => DummyMessage::class]];
 
-        $serializer = $this->createMock(SerializerInterface::class);
+        $serializer = $this->createStub(SerializerInterface::class);
         $serializer->method('encode')->with($envelope)->willReturn($encoded);
 
         $connection = $this->createMock(Connection::class);
