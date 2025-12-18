@@ -501,6 +501,36 @@ class ConnectionTest extends TestCase
         $connection->publish('{}', ['x-some-headers' => 'foo'], 5000);
     }
 
+    public function testItPublishesImmediatelyWithNegativeDelay()
+    {
+        $factory = new TestAmqpFactory(
+            $amqpConnection = $this->createMock(\AMQPConnection::class),
+            $amqpChannel = $this->createMock(\AMQPChannel::class),
+            $amqpQueue = $this->createMock(\AMQPQueue::class),
+            $amqpExchange = $this->createMock(\AMQPExchange::class)
+        );
+
+        $amqpQueue->expects($this->once())->method('setName')->with('messages');
+        $amqpQueue->expects($this->never())->method('setArguments');
+
+        $amqpQueue->expects($this->once())->method('declareQueue');
+        $amqpQueue->expects($this->once())->method('bind')->with('messages');
+
+        $amqpExchange->expects($this->once())
+            ->method('publish')
+            ->with('{}', null, \AMQP_NOPARAM, [
+                'headers' => [
+                    'x-some-headers' => 'foo',
+                ],
+                'delivery_mode' => 2,
+                'timestamp' => time(),
+            ]);
+
+        $connection = Connection::fromDsn('amqp://localhost', [], $factory);
+
+        $connection->publish('{}', ['x-some-headers' => 'foo'], -5000);
+    }
+
     public function testItRetriesTheMessage()
     {
         $delayExchange = $this->createMock(\AMQPExchange::class);

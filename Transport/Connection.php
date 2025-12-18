@@ -289,7 +289,7 @@ class Connection
         }
 
         $this->withConnectionExceptionRetry(function () use ($body, $headers, $delayInMs, $amqpStamp) {
-            if (0 !== $delayInMs) {
+            if (0 < $delayInMs) {
                 $this->publishWithDelay($body, $headers, $delayInMs, $amqpStamp);
 
                 return;
