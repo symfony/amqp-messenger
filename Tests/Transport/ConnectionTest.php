@@ -421,9 +421,9 @@ class ConnectionTest extends TestCase
     public function testExchangeBindingArguments()
     {
         $factory = new TestAmqpFactory(
-            $this->createMock(\AMQPConnection::class),
-            $this->createMock(\AMQPChannel::class),
-            $this->createMock(\AMQPQueue::class),
+            $this->createStub(\AMQPConnection::class),
+            $this->createStub(\AMQPChannel::class),
+            $this->createStub(\AMQPQueue::class),
             $amqpExchange = $this->createMock(\AMQPExchange::class)
         );
 
@@ -461,10 +461,10 @@ class ConnectionTest extends TestCase
         $this->expectExceptionMessage('The "binding_keys" option must be set to a non-empty array for exchange "exchange0".');
 
         $factory = new TestAmqpFactory(
-            $this->createMock(\AMQPConnection::class),
-            $this->createMock(\AMQPChannel::class),
-            $this->createMock(\AMQPQueue::class),
-            $this->createMock(\AMQPExchange::class)
+            $this->createStub(\AMQPConnection::class),
+            $this->createStub(\AMQPChannel::class),
+            $this->createStub(\AMQPQueue::class),
+            $this->createStub(\AMQPExchange::class)
         );
 
         $dsn = 'amqp://localhost?exchange[type]=headers'.
