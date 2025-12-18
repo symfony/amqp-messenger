@@ -36,7 +36,7 @@ class AmqpReceiverTest extends TestCase
         );
 
         $amqpEnvelope = $this->createAMQPEnvelope();
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $connection->method('getQueueNames')->willReturn(['queueName']);
         $connection->method('get')->with('queueName')->willReturn($amqpEnvelope);
 
@@ -49,9 +49,9 @@ class AmqpReceiverTest extends TestCase
     public function testItThrowsATransportExceptionIfItCannotAcknowledgeMessage()
     {
         $this->expectException(TransportException::class);
-        $serializer = $this->createMock(SerializerInterface::class);
+        $serializer = $this->createStub(SerializerInterface::class);
         $amqpEnvelope = $this->createAMQPEnvelope();
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $connection->method('getQueueNames')->willReturn(['queueName']);
         $connection->method('get')->with('queueName')->willReturn($amqpEnvelope);
         $connection->method('ack')->with($amqpEnvelope, 'queueName')->willThrowException(new \AMQPException());
@@ -63,9 +63,9 @@ class AmqpReceiverTest extends TestCase
     public function testItThrowsATransportExceptionIfItCannotRejectMessage()
     {
         $this->expectException(TransportException::class);
-        $serializer = $this->createMock(SerializerInterface::class);
+        $serializer = $this->createStub(SerializerInterface::class);
         $amqpEnvelope = $this->createAMQPEnvelope();
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $connection->method('getQueueNames')->willReturn(['queueName']);
         $connection->method('get')->with('queueName')->willReturn($amqpEnvelope);
         $connection->method('nack')->with($amqpEnvelope, 'queueName', \AMQP_NOPARAM)->willThrowException(new \AMQPException());
@@ -76,7 +76,7 @@ class AmqpReceiverTest extends TestCase
 
     private function createAMQPEnvelope(): \AMQPEnvelope
     {
-        $envelope = $this->createMock(\AMQPEnvelope::class);
+        $envelope = $this->createStub(\AMQPEnvelope::class);
         $envelope->method('getBody')->willReturn('{"message": "Hi"}');
         $envelope->method('getHeaders')->willReturn([
             'type' => DummyMessage::class,

@@ -21,7 +21,7 @@ class AmqpReceivedStampTest extends TestCase
 {
     public function testStamp()
     {
-        $amqpEnvelope = $this->createMock(\AMQPEnvelope::class);
+        $amqpEnvelope = $this->createStub(\AMQPEnvelope::class);
 
         $stamp = new AmqpReceivedStamp($amqpEnvelope, 'queueName');
 
