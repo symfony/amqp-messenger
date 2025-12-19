@@ -24,7 +24,8 @@
         "symfony/event-dispatcher": "^6.4|^7.0|^8.0",
         "symfony/process": "^6.4|^7.0|^8.0",
         "symfony/property-access": "^6.4|^7.0|^8.0",
-        "symfony/serializer": "^6.4|^7.0|^8.0"
+        "symfony/serializer": "^6.4|^7.0|^8.0",
+        "phpunit/phpunit": "12.4"
     },
     "autoload": {
         "psr-4": { "Symfony\\Component\\Messenger\\Bridge\\Amqp\\": "" },

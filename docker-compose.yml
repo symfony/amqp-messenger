@@ -1,0 +1,6 @@
+services:
+  php-cli:
+    build: .
+    volumes:
+      - .:/var/www/html
+      - ~/.composer:/.composer

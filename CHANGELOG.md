@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+7.4.1
+---
+
+ * Add option `delay[daily_delay_queues]` in the transport definition
+
 7.3
 ---
 
