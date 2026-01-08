@@ -85,7 +85,7 @@ class AmqpReceiverTest extends TestCase
         $id = '01946fcb-4bcb-7aa7-9727-dac1c0374443';
         $amqpEnvelope = $this->createAMQPEnvelope($id);
 
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $connection->method('getQueueNames')->willReturn(['queueName']);
         $connection->method('get')->with('queueName')->willReturn($amqpEnvelope);
 
@@ -118,7 +118,7 @@ class AmqpReceiverTest extends TestCase
 
         $amqpEnvelope = $this->createAMQPEnvelope();
 
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $connection->method('getQueueNames')->willReturn(['queueName']);
         $connection->method('get')->with('queueName')->willReturn($amqpEnvelope);
 
