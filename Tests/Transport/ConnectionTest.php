@@ -846,6 +846,68 @@ class ConnectionTest extends TestCase
         $connection->publish('body', [], 5000);
     }
 
+    public function testItDoesNotReconnectWhileMessageIsInFlightWhenHeartbeatExpires()
+    {
+        $connected = true;
+
+        $amqpConnection = $this->createMock(\AMQPConnection::class);
+        $amqpConnection->expects($this->never())->method('disconnect');
+        $amqpConnection->expects($this->never())->method('pdisconnect');
+        $amqpConnection->method('connect')->willReturnCallback(static function () use (&$connected) {
+            $connected = true;
+        });
+
+        $amqpChannel = $this->createMock(\AMQPChannel::class);
+        $amqpChannel->method('getConnection')->willReturn($amqpConnection);
+        $amqpChannel->method('isConnected')->willReturnCallback(static function () use (&$connected) {
+            return $connected;
+        });
+
+        $amqpExchange = $this->createMock(\AMQPExchange::class);
+        $amqpExchange->expects($this->once())->method('publish');
+
+        $amqpEnvelope = $this->createStub(\AMQPEnvelope::class);
+        $amqpEnvelope->method('getDeliveryTag')->willReturn(1);
+
+        $queue = $this->createMock(\AMQPQueue::class);
+        $queue->expects($this->once())->method('get')->willReturn($amqpEnvelope);
+        $queue->expects($this->once())->method('ack')->with(1);
+
+        $queueAfterReconnect = $this->createMock(\AMQPQueue::class);
+        $queueAfterReconnect->expects($this->never())->method('ack');
+
+        $factory = $this->createStub(AmqpFactory::class);
+        $factory->method('createConnection')->willReturn($amqpConnection);
+        $factory->method('createChannel')->willReturn($amqpChannel);
+        $factory->method('createExchange')->willReturn($amqpExchange);
+        $factory->method('createQueue')->willReturnOnConsecutiveCalls($queue, $queueAfterReconnect);
+
+        $connection = Connection::fromDsn('amqp://localhost?heartbeat=1', [], $factory);
+
+        $envelope = $connection->get(self::DEFAULT_EXCHANGE_NAME);
+
+        (new \ReflectionProperty($connection, 'lastActivityTime'))->setValue($connection, time() - 3);
+
+        $connection->publish('body');
+        $connection->ack($envelope, self::DEFAULT_EXCHANGE_NAME);
+    }
+
+    public function testClearResetsInFlightMessagesCounter()
+    {
+        $factory = $this->createStub(AmqpFactory::class);
+        $connection = Connection::fromDsn('amqp://localhost', [], $factory);
+
+        $reflection = new \ReflectionClass($connection);
+
+        $inFlightMessagesProperty = $reflection->getProperty('inFlightMessages');
+        $inFlightMessagesProperty->setValue($connection, 2);
+
+        $clearMethod = $reflection->getMethod('clear');
+        $clearMethod->invoke($connection);
+
+        $this->assertSame(0, $inFlightMessagesProperty->getValue($connection));
+    }
+
     public function testItWillRetryMaxThreeTimesWhenAMQPConnectionExceptionIsThrown()
     {
         $factory = new TestAmqpFactory(

@@ -97,6 +97,7 @@ class Connection
 
     private \AMQPExchange $amqpDelayExchange;
     private int $lastActivityTime = 0;
+    private int $inFlightMessages = 0;
 
     public function __construct(array $connectionOptions, array $exchangeOptions, array $queuesOptions, ?AmqpFactory $amqpFactory = null)
     {
@@ -209,7 +210,7 @@ class Connection
             $amqpOptions['auto_setup'] = filter_var($amqpOptions['auto_setup'], \FILTER_VALIDATE_BOOL);
         }
 
-        $queuesOptions = array_map(function ($queueOptions) {
+        $queuesOptions = array_map(static function ($queueOptions) {
             if (!\is_array($queueOptions)) {
                 $queueOptions = [];
             }
@@ -431,20 +432,35 @@ class Connection
         }
 
         if (false !== $message = $this->queue($queueName)->get()) {
+            ++$this->inFlightMessages;
+            $this->lastActivityTime = time();
+
             return $message;
         }
+
+        $this->lastActivityTime = time();
 
         return null;
     }
 
     public function ack(\AMQPEnvelope $message, string $queueName): bool
     {
-        return $this->queue($queueName)->ack($message->getDeliveryTag()) ?? true;
+        try {
+            return $this->queue($queueName)->ack($message->getDeliveryTag()) ?? true;
+        } finally {
+            $this->lastActivityTime = time();
+            $this->inFlightMessages = max(0, $this->inFlightMessages - 1);
+        }
     }
 
     public function nack(\AMQPEnvelope $message, string $queueName, int $flags = \AMQP_NOPARAM): bool
     {
-        return $this->queue($queueName)->nack($message->getDeliveryTag(), $flags) ?? true;
+        try {
+            return $this->queue($queueName)->nack($message->getDeliveryTag(), $flags) ?? true;
+        } finally {
+            $this->lastActivityTime = time();
+            $this->inFlightMessages = max(0, $this->inFlightMessages - 1);
+        }
     }
 
     public function setup(): void
@@ -502,7 +518,7 @@ class Connection
             }
 
             $this->lastActivityTime = time();
-        } elseif (0 < ($this->connectionOptions['heartbeat'] ?? 0) && time() > $this->lastActivityTime + 2 * $this->connectionOptions['heartbeat']) {
+        } elseif (0 < ($this->connectionOptions['heartbeat'] ?? 0) && time() > $this->lastActivityTime + 2 * $this->connectionOptions['heartbeat'] && 0 === $this->inFlightMessages) {
             $disconnectMethod = 'true' === ($this->connectionOptions['persistent'] ?? 'false') ? 'pdisconnect' : 'disconnect';
             $this->amqpChannel->getConnection()->{$disconnectMethod}();
         }
@@ -556,6 +572,7 @@ class Connection
     {
         unset($this->amqpChannel, $this->amqpExchange, $this->amqpDelayExchange);
         $this->amqpQueues = [];
+        $this->inFlightMessages = 0;
     }
 
     private function getDefaultPublishRoutingKey(): ?string
