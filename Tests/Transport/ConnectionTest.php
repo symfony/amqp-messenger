@@ -857,7 +857,7 @@ class ConnectionTest extends TestCase
             $connected = true;
         });
 
-        $amqpChannel = $this->createMock(\AMQPChannel::class);
+        $amqpChannel = $this->createStub(\AMQPChannel::class);
         $amqpChannel->method('getConnection')->willReturn($amqpConnection);
         $amqpChannel->method('isConnected')->willReturnCallback(static function () use (&$connected) {
             return $connected;
