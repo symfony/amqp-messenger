@@ -1070,6 +1070,42 @@ class ConnectionTest extends TestCase
 
         $connection->publish('body');
     }
+
+    public function testDefaultQueueBindingCanBeDisabledViaQueuesOption()
+    {
+        $this->assertEquals(
+            new Connection(
+                connectionOptions: [
+                    'host' => 'localhost',
+                    'port' => 5672,
+                    'vhost' => '/',
+                ],
+                exchangeOptions: [
+                    'name' => self::DEFAULT_EXCHANGE_NAME,
+                ],
+                queuesOptions: []
+            ),
+            Connection::fromDsn('amqp://', ['queues' => false])
+        );
+    }
+
+    public function testDefaultQueueBindingCanBeDisabledViaDsnQueuesOption()
+    {
+        $this->assertEquals(
+            new Connection(
+                connectionOptions: [
+                    'host' => 'localhost',
+                    'port' => 5672,
+                    'vhost' => '/',
+                ],
+                exchangeOptions: [
+                    'name' => self::DEFAULT_EXCHANGE_NAME,
+                ],
+                queuesOptions: []
+            ),
+            Connection::fromDsn('amqp://localhost?queues=false')
+        );
+    }
 }
 
 class TestAmqpFactory extends AmqpFactory
