@@ -38,9 +38,9 @@ class AmqpReceiverTest extends TestCase
         );
 
         $amqpEnvelope = $this->createAMQPEnvelope();
-        $connection = $this->createStub(Connection::class);
+        $connection = $this->createMock(Connection::class);
         $connection->method('getQueueNames')->willReturn(['queueName']);
-        $connection->method('get')->with('queueName')->willReturn($amqpEnvelope);
+        $connection->expects($this->once())->method('get')->with('queueName')->willReturn($amqpEnvelope);
 
         $receiver = new AmqpReceiver($connection, $serializer);
         $actualEnvelopes = iterator_to_array($receiver->get());
@@ -53,10 +53,9 @@ class AmqpReceiverTest extends TestCase
         $this->expectException(TransportException::class);
         $serializer = $this->createStub(SerializerInterface::class);
         $amqpEnvelope = $this->createAMQPEnvelope();
-        $connection = $this->createStub(Connection::class);
+        $connection = $this->createMock(Connection::class);
         $connection->method('getQueueNames')->willReturn(['queueName']);
-        $connection->method('get')->with('queueName')->willReturn($amqpEnvelope);
-        $connection->method('ack')->with($amqpEnvelope, 'queueName')->willThrowException(new \AMQPException());
+        $connection->expects($this->once())->method('ack')->with($amqpEnvelope, 'queueName')->willThrowException(new \AMQPException());
 
         $receiver = new AmqpReceiver($connection, $serializer);
         $receiver->ack(new Envelope(new \stdClass(), [new AmqpReceivedStamp($amqpEnvelope, 'queueName')]));
@@ -67,10 +66,9 @@ class AmqpReceiverTest extends TestCase
         $this->expectException(TransportException::class);
         $serializer = $this->createStub(SerializerInterface::class);
         $amqpEnvelope = $this->createAMQPEnvelope();
-        $connection = $this->createStub(Connection::class);
+        $connection = $this->createMock(Connection::class);
         $connection->method('getQueueNames')->willReturn(['queueName']);
-        $connection->method('get')->with('queueName')->willReturn($amqpEnvelope);
-        $connection->method('nack')->with($amqpEnvelope, 'queueName', \AMQP_NOPARAM)->willThrowException(new \AMQPException());
+        $connection->expects($this->once())->method('nack')->with($amqpEnvelope, 'queueName', \AMQP_NOPARAM)->willThrowException(new \AMQPException());
 
         $receiver = new AmqpReceiver($connection, $serializer);
         $receiver->reject(new Envelope(new \stdClass(), [new AmqpReceivedStamp($amqpEnvelope, 'queueName')]));
@@ -85,9 +83,9 @@ class AmqpReceiverTest extends TestCase
         $id = '01946fcb-4bcb-7aa7-9727-dac1c0374443';
         $amqpEnvelope = $this->createAMQPEnvelope($id);
 
-        $connection = $this->createStub(Connection::class);
+        $connection = $this->createMock(Connection::class);
         $connection->method('getQueueNames')->willReturn(['queueName']);
-        $connection->method('get')->with('queueName')->willReturn($amqpEnvelope);
+        $connection->expects($this->once())->method('get')->with('queueName')->willReturn($amqpEnvelope);
 
         $receiver = new AmqpReceiver($connection, $serializer);
         $actualEnvelopes = iterator_to_array($receiver->get());
@@ -118,9 +116,9 @@ class AmqpReceiverTest extends TestCase
 
         $amqpEnvelope = $this->createAMQPEnvelope();
 
-        $connection = $this->createStub(Connection::class);
+        $connection = $this->createMock(Connection::class);
         $connection->method('getQueueNames')->willReturn(['queueName']);
-        $connection->method('get')->with('queueName')->willReturn($amqpEnvelope);
+        $connection->expects($this->once())->method('get')->with('queueName')->willReturn($amqpEnvelope);
 
         $receiver = new AmqpReceiver($connection, $serializer);
         $actualEnvelopes = iterator_to_array($receiver->get());
