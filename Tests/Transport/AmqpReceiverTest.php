@@ -147,9 +147,9 @@ class AmqpReceiverTest extends TestCase
         $serializer->method('decode')->willThrowException(new MessageDecodingFailedException());
 
         $amqpEnvelope = $this->createAMQPEnvelope();
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $connection->method('getQueueNames')->willReturn(['queueName']);
-        $connection->method('get')->with('queueName')->willReturn($amqpEnvelope);
+        $connection->method('get')->willReturn($amqpEnvelope);
 
         $receiver = new AmqpReceiver($connection, $serializer);
         $envelopes = iterator_to_array($receiver->get());
