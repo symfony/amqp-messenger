@@ -37,19 +37,52 @@ class AmqpReceiver implements QueueReceiverInterface, MessageCountAwareInterface
         $this->serializer = $serializer ?? new PhpSerializer();
     }
 
-    public function get(): iterable
+    /**
+     * @param int $fetchSize
+     */
+    public function get(/* int $fetchSize = 1 */): iterable
     {
-        yield from $this->getFromQueues($this->connection->getQueueNames());
+        $fetchSize = \func_num_args() > 0 ? max(1, func_get_arg(0)) : 1;
+
+        yield from $this->getFromQueues($this->connection->getQueueNames(), $fetchSize);
     }
 
-    public function getFromQueues(array $queueNames): iterable
+    /**
+     * @param int $fetchSize
+     */
+    public function getFromQueues(array $queueNames/* , int $fetchSize = 1 */): iterable
     {
-        foreach ($queueNames as $queueName) {
-            yield from $this->getEnvelope($queueName);
+        $fetchSize = \func_num_args() > 1 ? max(1, func_get_arg(1)) : 1;
+        $remaining = $fetchSize;
+        $activeQueues = array_values($queueNames);
+        $firstRound = true;
+
+        while ($activeQueues && ($remaining > 0 || $firstRound)) {
+            $exhausted = [];
+
+            foreach ($activeQueues as $i => $queueName) {
+                if (null === $envelope = $this->getEnvelope($queueName)) {
+                    $exhausted[] = $i;
+                    continue;
+                }
+
+                yield $envelope;
+                --$remaining;
+
+                if ($remaining <= 0 && !$firstRound) {
+                    return;
+                }
+            }
+
+            $firstRound = false;
+
+            foreach (array_reverse($exhausted) as $i) {
+                array_splice($activeQueues, $i, 1);
+            }
         }
     }
 
-    private function getEnvelope(string $queueName): iterable
+    private function getEnvelope(string $queueName): ?Envelope
     {
         try {
             $amqpEnvelope = $this->connection->get($queueName);
@@ -68,7 +101,7 @@ class AmqpReceiver implements QueueReceiverInterface, MessageCountAwareInterface
         }
 
         if (null === $amqpEnvelope) {
-            return;
+            return null;
         }
 
         $body = $amqpEnvelope->getBody();
@@ -78,13 +111,15 @@ class AmqpReceiver implements QueueReceiverInterface, MessageCountAwareInterface
             ...($id ? [new TransportMessageIdStamp($id)] : []),
         ];
 
+        $data = [
+            'body' => false === $body ? '' : $body,
+            'headers' => $amqpEnvelope->getHeaders(),
+        ];
+
         try {
-            yield $this->serializer->decode($data = [
-                'body' => false === $body ? '' : $body, // workaround https://github.com/pdezwart/php-amqp/issues/351
-                'headers' => $amqpEnvelope->getHeaders(),
-            ])->withoutAll(TransportMessageIdStamp::class)->with(...$stamps);
+            return $this->serializer->decode($data)->withoutAll(TransportMessageIdStamp::class)->with(...$stamps);
         } catch (MessageDecodingFailedException $e) {
-            yield MessageDecodingFailedException::wrap($data, $e->getMessage(), $e->getCode(), $e)->with(...$stamps);
+            return MessageDecodingFailedException::wrap($data, $e->getMessage(), $e->getCode(), $e)->with(...$stamps);
         }
     }
 

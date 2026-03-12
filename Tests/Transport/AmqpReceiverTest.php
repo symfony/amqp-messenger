@@ -49,6 +49,39 @@ class AmqpReceiverTest extends TestCase
         $this->assertEquals(new DummyMessage('Hi'), $actualEnvelopes[0]->getMessage());
     }
 
+    public function testGetAcceptsFetchSize()
+    {
+        $serializer = new Serializer(
+            new SerializerComponent\Serializer([new ObjectNormalizer()], ['json' => new JsonEncoder()])
+        );
+
+        $amqpEnvelope = $this->createAMQPEnvelope();
+        $connection = $this->createMock(Connection::class);
+        $connection->method('getQueueNames')->willReturn(['queueName']);
+        $connection->expects($this->exactly(2))->method('get')->with('queueName')->willReturnOnConsecutiveCalls($amqpEnvelope, null);
+
+        $receiver = new AmqpReceiver($connection, $serializer);
+        $actualEnvelopes = iterator_to_array($receiver->get(7));
+
+        $this->assertCount(1, $actualEnvelopes);
+    }
+
+    public function testGetFromQueuesAcceptsFetchSize()
+    {
+        $serializer = new Serializer(
+            new SerializerComponent\Serializer([new ObjectNormalizer()], ['json' => new JsonEncoder()])
+        );
+
+        $amqpEnvelope = $this->createAMQPEnvelope();
+        $connection = $this->createMock(Connection::class);
+        $connection->expects($this->exactly(2))->method('get')->with('queueName')->willReturnOnConsecutiveCalls($amqpEnvelope, null);
+
+        $receiver = new AmqpReceiver($connection, $serializer);
+        $actualEnvelopes = iterator_to_array($receiver->getFromQueues(['queueName'], 7));
+
+        $this->assertCount(1, $actualEnvelopes);
+    }
+
     public function testItThrowsATransportExceptionIfItCannotAcknowledgeMessage()
     {
         $this->expectException(TransportException::class);
@@ -158,10 +191,10 @@ class AmqpReceiverTest extends TestCase
         $this->assertInstanceOf(MessageDecodingFailedException::class, $envelopes[0]->getMessage());
     }
 
-    private function createAMQPEnvelope(?string $messageId = null): \AMQPEnvelope
+    private function createAMQPEnvelope(?string $messageId = null, string $body = '{"message": "Hi"}'): \AMQPEnvelope
     {
         $envelope = $this->createStub(\AMQPEnvelope::class);
-        $envelope->method('getBody')->willReturn('{"message": "Hi"}');
+        $envelope->method('getBody')->willReturn($body);
         $envelope->method('getHeaders')->willReturn([
             'type' => DummyMessage::class,
         ]);
