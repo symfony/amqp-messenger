@@ -620,6 +620,9 @@ class Connection
         return $amqpStamp?->getRoutingKey() ?? $this->getDefaultPublishRoutingKey();
     }
 
+    /**
+     * @param-immediately-invoked-callable $callable
+     */
     private function withConnectionExceptionRetry(callable $callable): void
     {
         $maxRetries = 3;
