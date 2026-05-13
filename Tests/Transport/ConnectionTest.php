@@ -609,7 +609,7 @@ class ConnectionTest extends TestCase
     public function testItDelaysTheMessageWithDailyDelayQueues()
     {
         $delayExchange = $this->createMock(\AMQPExchange::class);
-        $date = (new \DateTimeImmutable())->format('Y-m-d');
+        $date = date('Y-m-d');
         $delayExchange->expects($this->once())
             ->method('publish')
             ->with('{}', "delay_messages__5000_delay_$date", \AMQP_NOPARAM, [
@@ -638,7 +638,7 @@ class ConnectionTest extends TestCase
     public function testItRetriesTheMessageWithDailyDelayQueues()
     {
         $delayExchange = $this->createMock(\AMQPExchange::class);
-        $date = (new \DateTimeImmutable())->format('Y-m-d');
+        $date = date('Y-m-d');
         $delayExchange->expects($this->once())
             ->method('publish')
             ->with('{}', "delay_messages__5000_retry_$date", \AMQP_NOPARAM);
@@ -647,6 +647,22 @@ class ConnectionTest extends TestCase
         $amqpStamp = AmqpStamp::createFromAmqpEnvelope($this->createStub(\AMQPEnvelope::class), null, '');
         $connection->publish('{}', [], 5000, $amqpStamp);
     }
+
+    public function testDailyDelayQueuesOptionIsNormalizedToBoolean()
+    {
+        $delayExchange = $this->createMock(\AMQPExchange::class);
+        $delayExchange->expects($this->once())
+            ->method('publish')
+            ->with('{}', 'delay_messages__5000_delay', \AMQP_NOPARAM, [
+                'headers' => ['x-some-headers' => 'foo'],
+                'delivery_mode' => 2,
+                'timestamp' => time(),
+            ]);
+        $connection = $this->createDelayOrRetryConnection($delayExchange, self::DEFAULT_EXCHANGE_NAME, 'delay_messages__5000_delay', 'false');
+
+        $connection->publish('{}', ['x-some-headers' => 'foo'], 5000);
+    }
+
 
     public function testItDelaysTheMessageWithADifferentRoutingKeyAndTTLs()
     {
@@ -1039,7 +1055,7 @@ class ConnectionTest extends TestCase
         $connection->publish('body');
     }
 
-    private function createDelayOrRetryConnection(\AMQPExchange $delayExchange, string $deadLetterExchangeName, string $delayQueueName, bool $dailyDelayQueues = false): Connection
+    private function createDelayOrRetryConnection(\AMQPExchange $delayExchange, string $deadLetterExchangeName, string $delayQueueName, bool|string $dailyDelayQueues = false): Connection
     {
         $amqpConnection = $this->createStub(\AMQPConnection::class);
         $amqpChannel = $this->createStub(\AMQPChannel::class);
@@ -1051,7 +1067,7 @@ class ConnectionTest extends TestCase
         $delayQueue = $this->createMock(\AMQPQueue::class);
         $factory->method('createQueue')->willReturn($this->createStub(\AMQPQueue::class), $delayQueue);
         $factory->method('createExchange')->willReturn($this->createStub(\AMQPExchange::class), $delayExchange);
-        $baseExpire = $dailyDelayQueues ? 86400 * 1000 : 0;
+        $baseExpire = filter_var($dailyDelayQueues, \FILTER_VALIDATE_BOOL) ? 86400 * 1000 : 0;
         $delayQueue->expects($this->once())->method('setName')->with($delayQueueName);
         $delayQueue->expects($this->once())->method('setArguments')->with([
             'x-message-ttl' => 5000,
@@ -1062,7 +1078,7 @@ class ConnectionTest extends TestCase
 
         $delayQueue->expects($this->once())->method('declareQueue');
         $delayQueue->expects($this->once())->method('bind')->with('delays', $delayQueueName);
-        $options = $dailyDelayQueues ? ['delay' => ['daily_delay_queues' => true]] : [];
+        $options = false === $dailyDelayQueues ? [] : ['delay' => ['daily_delay_queues' => $dailyDelayQueues]];
 
         return Connection::fromDsn('amqp://localhost', $options, $factory);
     }
