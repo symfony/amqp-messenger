@@ -154,6 +154,10 @@ class Connection
      *     * queue_name_pattern: Pattern to use to create the queues (Default: "delay_%exchange_name%_%routing_key%_%delay%")
      *     * exchange_name: Name of the exchange to be used for the delayed/retried messages (Default: "delays")
      *     * arguments: array of extra delay queue arguments (for example:  ['x-queue-type' => 'classic', 'x-message-deduplication' => true,])
+     *     * daily_delay_queues: When true, the current date is appended to the delay queue names
+     *       (e.g. "delay_messages__5000_delay_2025-04-28") and their "x-expires" argument is increased by 24 hours
+     *       (24 * 60 * 60 * 1000 ms), so RabbitMQ deletes them automatically once the day is over. This is useful for
+     *       quorum queues, which do not allow redeclaring a queue to renew its lease. (Default: false)
      *   * auto_setup: Enable or not the auto-setup of queues and exchanges (Default: true)
      *
      *   * Connection tuning options (see http://www.rabbitmq.com/amqp-0-9-1-reference.html#connection.tune for details):
@@ -217,6 +221,10 @@ class Connection
         unset($amqpOptions['queues'], $amqpOptions['exchange']);
         if (isset($amqpOptions['auto_setup'])) {
             $amqpOptions['auto_setup'] = filter_var($amqpOptions['auto_setup'], \FILTER_VALIDATE_BOOL);
+        }
+
+        if (isset($amqpOptions['delay']['daily_delay_queues'])) {
+            $amqpOptions['delay']['daily_delay_queues'] = filter_var($amqpOptions['delay']['daily_delay_queues'], \FILTER_VALIDATE_BOOL);
         }
 
         $queuesOptions = array_map(static function ($queueOptions) {
@@ -400,11 +408,14 @@ class Connection
         $queue = $this->amqpFactory->createQueue($this->channel());
         $queue->setName($this->getRoutingKeyForDelay($delay, $routingKey, $isRetryAttempt));
         $queue->setFlags(\AMQP_DURABLE);
+        $queueExpirationBase = ($this->connectionOptions['delay']['daily_delay_queues'] ?? false) ? 24 * 60 * 60 * 1000 : 0;
         $queue->setArguments(array_merge([
             'x-message-ttl' => $delay,
             // delete the delay queue 10 seconds after the message expires
-            // publishing another message redeclares the queue which renews the lease
-            'x-expires' => $delay + 10000,
+            // publishing another message redeclares the queue which renews the lease;
+            // quorum queues cannot be redeclared, so daily_delay_queues=true adds 24 hours (24 * 60 * 60 * 1000 ms)
+            // to the lease and uses a per-day queue name instead, letting RabbitMQ clean up old queues by itself
+            'x-expires' => $queueExpirationBase + $delay + 10000,
             // message should be broadcast to all consumers during delay, but to only one queue during retry
             // empty name is default direct exchange
             'x-dead-letter-exchange' => $isRetryAttempt ? '' : $this->exchangeOptions['name'],
@@ -419,12 +430,13 @@ class Connection
     private function getRoutingKeyForDelay(int $delay, ?string $finalRoutingKey, bool $isRetryAttempt): string
     {
         $action = $isRetryAttempt ? '_retry' : '_delay';
+        $date = ($this->connectionOptions['delay']['daily_delay_queues'] ?? false) ? '_'.date('Y-m-d') : '';
 
         return str_replace(
             ['%delay%', '%exchange_name%', '%routing_key%'],
             [$delay, $this->exchangeOptions['name'], $finalRoutingKey ?? ''],
             $this->connectionOptions['delay']['queue_name_pattern']
-        ).$action;
+        ).$action.$date;
     }
 
     /**
