@@ -81,7 +81,7 @@ class AmqpSenderTest extends TestCase
         $encoded = ['body' => '...', 'headers' => ['type' => DummyMessage::class]];
 
         $serializer = $this->createMock(SerializerInterface::class);
-        $serializer->method('encode')->with($envelope)->willReturnOnConsecutiveCalls($encoded);
+        $serializer->expects($this->once())->method('encode')->with($envelope)->willReturnOnConsecutiveCalls($encoded);
 
         $connection = $this->createMock(Connection::class);
         $connection->expects($this->once())->method('publish')->with($encoded['body'], $encoded['headers'], 1000);
@@ -96,7 +96,7 @@ class AmqpSenderTest extends TestCase
         $encoded = ['body' => '...', 'headers' => ['type' => DummyMessage::class]];
 
         $serializer = $this->createMock(SerializerInterface::class);
-        $serializer->method('encode')->with($envelope)->willReturnOnConsecutiveCalls($encoded);
+        $serializer->expects($this->once())->method('encode')->with($envelope)->willReturnOnConsecutiveCalls($encoded);
 
         $connection = $this->createMock(Connection::class);
         $connection->expects($this->once())->method('publish')->with($encoded['body'], $encoded['headers'], 0, $this->callback(static fn (AmqpStamp $stamp) => 255 === $stamp->getAttributes()['priority']));
